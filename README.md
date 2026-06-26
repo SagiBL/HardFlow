@@ -1,13 +1,25 @@
-# HardFlow — Robotic Manipulation
+<h1 align="center">HardFlow</h1>
 
-This branch (`d3il`) reproduces Section VII.A of [HardFlow: Hard-Constrained
-Sampling for Flow-Matching Models via Trajectory Optimization](https://arxiv.org/abs/2511.08425).
+<p align="center">
+  <b><a href="https://arxiv.org/abs/2511.08425">Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization</a></b>
+  <br><br>
+  Zeyang Li &nbsp;·&nbsp; Kaveh Alim &nbsp;·&nbsp; Navid Azizan
+  <br>
+  <i>Massachusetts Institute of Technology</i>
+  <br><br>
+  <b>IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2026</b>
+</p>
 
-The task is goal-reaching with obstacle avoidance on the "avoiding"
-benchmark. A flow-matching model is trained on expert demonstrations to
-generate (state, action) trajectories. At inference, HardFlow steers the
-sampler so the planned trajectory avoids all obstacles and heads to the
-target.
+---
+
+## Robotic Manipulation (Section VII.A)
+
+This branch (`d3il`) reproduces the robotic manipulation experiments from
+the paper. The task is goal-reaching with obstacle avoidance on the
+"avoiding" benchmark. A flow-matching model is trained on expert
+demonstrations to generate (state, action) trajectories. At inference,
+HardFlow steers the sampler so the planned trajectory avoids all obstacles
+and heads to the target.
 
 ## Branches in this repo
 
@@ -104,7 +116,8 @@ Some PyTorch–CasADi bridges are provided by
 @article{li2025hardflow,
   title={HardFlow: Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization},
   author={Li, Zeyang and Alim, Kaveh and Azizan, Navid},
-  journal={arXiv preprint arXiv:2511.08425},
-  year={2025}
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2026},
+  publisher={IEEE}
 }
 ```
