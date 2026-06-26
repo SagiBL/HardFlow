@@ -1,9 +1,21 @@
-# HardFlow — Text-Guided Image Editing
+<h1 align="center">HardFlow</h1>
 
-This branch (`image`) reproduces Section VII.D of [HardFlow: Hard-Constrained
-Sampling for Flow-Matching Models via Trajectory Optimization](https://arxiv.org/abs/2511.08425).
+<p align="center">
+  <b><a href="https://arxiv.org/abs/2511.08425">Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization</a></b>
+  <br><br>
+  Zeyang Li &nbsp;·&nbsp; Kaveh Alim &nbsp;·&nbsp; Navid Azizan
+  <br>
+  <i>Massachusetts Institute of Technology</i>
+  <br><br>
+  <b>IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2026</b>
+</p>
 
-The task is text-guided image editing. Given an input face image and a text prompt
+---
+
+## Text-Guided Image Editing (Section VII.D)
+
+This branch (`image`) reproduces the text-guided image editing experiments
+from the paper. Given an input face image and a text prompt
 (e.g., "A photo of an old face."), the goal is to produce an edit whose CLIP
 score with the prompt is high while the LPIPS distance to the input
 image stays below 0.06 (hard constraint).
@@ -80,7 +92,8 @@ The image-editing codebase on this branch is adapted from
 @article{li2025hardflow,
   title={HardFlow: Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization},
   author={Li, Zeyang and Alim, Kaveh and Azizan, Navid},
-  journal={arXiv preprint arXiv:2511.08425},
-  year={2025}
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2026},
+  publisher={IEEE}
 }
 ```
