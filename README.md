@@ -1,9 +1,21 @@
-# HardFlow — Maze Navigation
+<h1 align="center">HardFlow</h1>
 
-This branch (`maze2d`) reproduces Section VII.B of [HardFlow: Hard-Constrained
-Sampling for Flow-Matching Models via Trajectory Optimization](https://arxiv.org/abs/2511.08425).
+<p align="center">
+  <b><a href="https://arxiv.org/abs/2511.08425">Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization</a></b>
+  <br><br>
+  Zeyang Li &nbsp;·&nbsp; Kaveh Alim &nbsp;·&nbsp; Navid Azizan
+  <br>
+  <i>Massachusetts Institute of Technology</i>
+  <br><br>
+  <b>IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2026</b>
+</p>
 
-The task is closed-loop point-mass navigation in the `maze2d-large-v1`
+---
+
+## Maze Navigation (Section VII.B)
+
+This branch (`maze2d`) reproduces the maze navigation experiments from the
+paper. The task is closed-loop point-mass navigation in the `maze2d-large-v1`
 environment with two extra obstacles. A flow-matching model is trained on
 offline trajectories from the dataset; at inference, HardFlow steers the
 sampler so the planned trajectory avoids all obstacles and reaches the goal
@@ -122,7 +134,8 @@ Some PyTorch–CasADi bridges are provided by
 @article{li2025hardflow,
   title={HardFlow: Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization},
   author={Li, Zeyang and Alim, Kaveh and Azizan, Navid},
-  journal={arXiv preprint arXiv:2511.08425},
-  year={2025}
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2026},
+  publisher={IEEE}
 }
 ```
