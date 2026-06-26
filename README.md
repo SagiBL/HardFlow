@@ -1,9 +1,21 @@
-# HardFlow — PDE Control
+<h1 align="center">HardFlow</h1>
 
-This branch (`burgers`) reproduces Section VII.C of [HardFlow: Hard-Constrained
-Sampling for Flow-Matching Models via Trajectory Optimization](https://arxiv.org/abs/2511.08425).
+<p align="center">
+  <b><a href="https://arxiv.org/abs/2511.08425">Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization</a></b>
+  <br><br>
+  Zeyang Li &nbsp;·&nbsp; Kaveh Alim &nbsp;·&nbsp; Navid Azizan
+  <br>
+  <i>Massachusetts Institute of Technology</i>
+  <br><br>
+  <b>IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2026</b>
+</p>
 
-The task is control of the 1-D viscous Burgers' equation.
+---
+
+## PDE Control (Section VII.C)
+
+This branch (`burgers`) reproduces the PDE control experiments from the
+paper. The task is control of the 1-D viscous Burgers' equation.
 A flow-matching model is trained to generate (state, control) trajectories
 that satisfy given initial/terminal boundary conditions. At inference,
 HardFlow steers the sampler so the state trajectory respects a
@@ -98,7 +110,8 @@ Some PyTorch–CasADi bridges are provided by
 @article{li2025hardflow,
   title={HardFlow: Hard-Constrained Sampling for Flow-Matching Models via Trajectory Optimization},
   author={Li, Zeyang and Alim, Kaveh and Azizan, Navid},
-  journal={arXiv preprint arXiv:2511.08425},
-  year={2025}
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  year={2026},
+  publisher={IEEE}
 }
 ```
