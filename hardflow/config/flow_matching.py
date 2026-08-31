@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 @dataclass
 class FlowMatchingTrainingConfig:
     seed: int = 0
-    device: str = "cuda"
+    device: str = "cpu"
     log_folder: str = "logs"
     exp_name: str = "flow_matching"
 
@@ -34,7 +34,7 @@ class FlowMatchingTrainingConfig:
 class FlowMatchingEvaluationConfig:
     seed: int = 0
     random_repeat: int = 5
-    device: str = "cuda"
+    device: str = "cpu"
     log_folder: str = "logs"
     exp_name: str = "flow_matching"
 

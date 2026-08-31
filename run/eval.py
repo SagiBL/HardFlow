@@ -343,7 +343,13 @@ def run_env(
         # only plan once at t=0
         if t == 0:
             conditions[0] = observation
-            action, samples, _, _, info = policy(conditions, batch_size=cfg.batch_size)
+            (
+                action,
+                samples,
+                policy_x_chain,
+                policy_x1_estimation,
+                info,
+            ) = policy(conditions, batch_size=cfg.batch_size)
 
             if "computation_time" in info:
                 computation_times.append(info["computation_time"])
@@ -357,6 +363,40 @@ def run_env(
                 samples.observations[:1],
                 ncol=1,
             )
+
+            #save all process waypoints
+            if(1):
+                # images of all diffusion timesteps from policy_x_chain
+                diff_save_dir = os.path.join(save_path, f"{run_id}_chain")
+                os.makedirs(diff_save_dir, exist_ok=True)
+                num_diffusion_steps = policy_x_chain.shape[1]
+                for step_idx in range(num_diffusion_steps):
+                    step_observations = policy_x_chain[
+                        0:1, step_idx, :, policy.action_dim :
+                    ]
+                    renderer.composite(
+                        os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
+                        step_observations,
+                        ncol=1,
+                    )
+                
+            #save all process waypoints (x1 estimation)
+            if(1):
+                # images of all diffusion timesteps from policy_x1_estimation
+                diff_save_dir = os.path.join(save_path, f"{run_id}_x1_estimation")
+                os.makedirs(diff_save_dir, exist_ok=True)
+                num_diffusion_steps = policy_x1_estimation.shape[1]
+                for step_idx in range(num_diffusion_steps):
+                    step_observations = policy_x1_estimation[
+                        0:1, step_idx, :, policy.action_dim :
+                    ]
+                    renderer.composite(
+                        os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
+                        step_observations,
+                        ncol=1,
+                    )
+            print(f"Mean distance of a point in step {step_idx} and in final step: {np.linalg.norm(step_observations - samples.observations[:1], axis=-1).mean()}")
+    
 
         if cfg.controller == "pd":  # proportional-derivative
             px, py, vx, vy = observation
@@ -564,7 +604,8 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
                 "flow",
                 cfg.flow_exp_name,
                 f"model_ema_{cfg.flow_cp}.pth",
-            )
+            ),
+            map_location='cpu'
         )
     )
 
@@ -614,14 +655,15 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
                     "flow",
                     cfg.flow_exp_name,
                     f"model_ema_{cfg.flow_cp}.pth",
-                )
+                ),
+                map_location='cpu'
             )
         )
         wrapped_flow_model.add_info(
             horizon=cfg.horizon, transition_dim=cfg.state_dim + cfg.action_dim
         )
 
-        l4c_flow_fn = l4c.L4CasADi(wrapped_flow_model, device="cuda", name="flow_model")
+        l4c_flow_fn = l4c.L4CasADi(wrapped_flow_model, device="cpu", name="flow_model")
 
         constrained_flow_fn = create_constrained_casadi_functions(
             l4c_flow_fn,
@@ -707,7 +749,7 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
 
 if __name__ == "__main__":
     cfg = tyro.cli(FlowMatchingEvaluationConfig)
-    set_cuda_visible_device(cfg)
+    #set_cuda_visible_device(cfg)
     deterministic(cfg.seed)  # seed everything
 
     log_subfolder = os.path.join(cfg.log_folder, cfg.env, "eval", cfg.exp_name)

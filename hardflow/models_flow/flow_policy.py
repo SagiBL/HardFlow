@@ -889,7 +889,7 @@ class FlowPolicy(nn.Module):
             if self.cfg.projection_option == "all":
                 pass
             elif self.cfg.projection_option == "late":
-                if k < self.oc_N_steps // 2:
+                if k < self.oc_N_steps - 1:
                     projection_flag = False
             else:
                 raise ValueError(
@@ -1201,7 +1201,7 @@ class FlowPolicy(nn.Module):
             if self.cfg.hardflow_activation == "all":
                 pass
             elif self.cfg.hardflow_activation == "late":
-                if k < self.oc_N_steps // 2:
+                if k < self.oc_N_steps - 1:
                     control_flag = False
             else:
                 raise ValueError(
@@ -1361,7 +1361,7 @@ class FlowPolicy(nn.Module):
             if self.cfg.hardflow_activation == "all":
                 pass
             elif self.cfg.hardflow_activation == "late":
-                if k < self.oc_N_steps // 2:
+                if k < self.oc_N_steps - 1:
                     control_flag = False
             else:
                 raise ValueError(
@@ -1402,6 +1402,8 @@ class FlowPolicy(nn.Module):
             U_optimized.append(u_k)
 
             X_optimized.append(x_next)
+
+            print(f"Norm of diff at iteration {k} is: {np.linalg.norm(x_next - x_next_ref):.6f}")
 
         optimized_final_dof = X_optimized[-1]
 

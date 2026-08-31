@@ -15,7 +15,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=50
+random_repeat=1
 controller="pd"
 
 warmstart_batch=1
@@ -27,7 +27,7 @@ constraint="ellipses_and_dynamics"
 ellipse_margin=0.4
 cost="distance"
 hardflow_cost_scale=800.0
-hardflow_activation="late"
+hardflow_activation="all"
 solver_print_level=5
 
 exp_name="H${horizon}_1e6steps_hardflow_new_${ode_t_steps}steps"
@@ -35,7 +35,7 @@ exp_name="H${horizon}_1e6steps_hardflow_new_${ode_t_steps}steps"
 echo "=== Running HardFlow (new) on ${env}, horizon=${horizon}, ode_t_steps=${ode_t_steps} ==="
 
 python run/eval.py \
-	--device cuda:0 \
+	--device cpu \
 	--seed 0 \
 	--random_repeat "$random_repeat" \
 	--exp_name "$exp_name" \

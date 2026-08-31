@@ -19,7 +19,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=50
+random_repeat=1
 controller="pd"
 
 warmstart_batch=1
@@ -43,7 +43,7 @@ run_one () {
     echo "=== Running ${label} on ${env}, horizon=${horizon}, ode_t_steps=${ode_t_steps} ==="
 
     python run/eval.py \
-        --device cuda:0 \
+        --device cpu \
         --seed 0 \
         --random_repeat "$random_repeat" \
         --exp_name "$exp_name" \
@@ -70,9 +70,9 @@ run_one () {
         --guidance_method projection
 }
 
-run_one "all"  0   # Projection-All
+#run_one "all"  0   # Projection-All
 run_one "late" 0   # Projection-Late
-run_one "all"  5   # Projection-All  + Gradient Guidance
+#run_one "all"  5   # Projection-All  + Gradient Guidance
 run_one "late" 5   # Projection-Late + Gradient Guidance
 
 end_time=$(date +%s)

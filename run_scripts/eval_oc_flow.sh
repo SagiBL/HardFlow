@@ -15,7 +15,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=50
+random_repeat=1
 controller="pd"
 
 # warmstart trajectory drawn from the nominal sampler
@@ -38,7 +38,7 @@ exp_name="H${horizon}_1e6steps_oc_flow_${ode_t_steps}steps"
 echo "=== Running OC-Flow on ${env}, horizon=${horizon}, ode_t_steps=${ode_t_steps} ==="
 
 python run/eval.py \
-	--device cuda:0 \
+	--device cpu \
 	--seed 0 \
 	--random_repeat "$random_repeat" \
 	--exp_name "$exp_name" \

@@ -15,7 +15,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=50
+random_repeat=1
 controller="pd"
 batch_size=1
 
@@ -30,7 +30,7 @@ exp_name="H${horizon}_1e6steps_gradient_guidance_${ode_t_steps}steps"
 echo "=== Running Gradient Guidance on ${env}, horizon=${horizon}, ode_t_steps=${ode_t_steps} ==="
 
 python run/eval.py \
-	--device cuda:0 \
+	--device cpu \
 	--seed 0 \
 	--random_repeat "$random_repeat" \
 	--exp_name "$exp_name" \
