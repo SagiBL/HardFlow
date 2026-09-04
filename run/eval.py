@@ -159,8 +159,8 @@ class ProxyValueModel(nn.Module):
 
         xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
         ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xa = 2.0 * (5.3 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_ya = 2.0 * (4.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xa = 2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_ya = 2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
         xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
         yb = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
@@ -461,8 +461,8 @@ def run_env(
     ax.set_ylim(1, 0)
 
     theta = np.linspace(0, 2 * np.pi, 200)
-    x1 = 0.8 / 12.0 * np.cos(theta) + 6.0 / 12.0
-    y1 = 0.8 / 9.0 * np.sin(theta) + 5.2 / 9.0
+    x1 = 0.8 / 12.0 * np.cos(theta) + 7.5 / 12.0
+    y1 = 0.8 / 9.0 * np.sin(theta) + 5.5 / 9.0
     plt.fill(
         x1,
         y1,
@@ -529,8 +529,8 @@ def check_violation(observation, constraint):
     if constraint == "ellipses" or constraint == "ellipses_and_dynamics":
         y, x = observation[0], observation[1]
 
-        center1_x = 5.3
-        center1_y = 4.5
+        center1_x = 6.8
+        center1_y = 4.8
         radius1_x = 0.8
         radius1_y = 0.8
 

@@ -78,8 +78,8 @@ class MazeRenderer:
         plt.scatter(observations[:, 1], observations[:, 0], c=colors, zorder=20)
 
         theta = np.linspace(0, 2 * np.pi, 100)
-        x = 0.8 / 12.0 * np.cos(theta) + 6.0 / 12.0
-        y = 0.8 / 9.0 * np.sin(theta) + 5.2 / 9.0
+        x = 0.8 / 12.0 * np.cos(theta) + 7.5 / 12.0
+        y = 0.8 / 9.0 * np.sin(theta) + 5.5 / 9.0
         plt.plot(x, y, c="red", zorder=10)
 
         x = (

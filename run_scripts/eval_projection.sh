@@ -17,9 +17,9 @@ action_dim=2
 flow_type="cfm"
 horizon=384
 flow_cp=20
-ode_t_steps=10
+ode_t_steps=11
 
-random_repeat=1
+random_repeat=20
 controller="pd"
 
 warmstart_batch=1
@@ -71,9 +71,9 @@ run_one () {
 }
 
 #run_one "all"  0   # Projection-All
-run_one "late" 0   # Projection-Late
-#run_one "all"  5   # Projection-All  + Gradient Guidance
-run_one "late" 5   # Projection-Late + Gradient Guidance
+#run_one "late" 0   # Projection-Late
+run_one "all"  5   # Projection-All  + Gradient Guidance
+#run_one "late" 5   # Projection-Late + Gradient Guidance
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

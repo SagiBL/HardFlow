@@ -248,8 +248,8 @@ class FlowPolicy(nn.Module):
         # first obstacle
         xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
         ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xa = 2.0 * (5.3 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_ya = 2.0 * (4.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xa = 2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_ya = 2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
         # second obstacle
         xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
@@ -547,10 +547,10 @@ class FlowPolicy(nn.Module):
             xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
             ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
             off_xa = (
-                2.0 * (5.3 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+                2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
             )
             off_ya = (
-                2.0 * (4.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+                2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
             )
 
             xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
