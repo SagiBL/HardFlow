@@ -16,7 +16,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=1
+random_repeat=20
 controller="pd"
 
 warmstart_batch=1
@@ -66,7 +66,7 @@ run_one () {
 }
 
 run_one 0   # Projection-Relaxed
-run_one 5   # Projection-Relaxed + Gradient Guidance
+##run_one 5   # Projection-Relaxed + Gradient Guidance
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

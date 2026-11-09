@@ -165,6 +165,7 @@ class FlowPolicy(nn.Module):
             self.action_dim + self.state_dim,
             device=self.cfg.device,
         )  # (batch_size, planning_horizon, transition_dim)
+        raw_noise = x.clone()
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
         )
@@ -202,7 +203,11 @@ class FlowPolicy(nn.Module):
         t_end = time.time()
         computation_time = t_end - t_start
 
-        info = {"computation_time": computation_time}
+        info = {
+            "computation_time": computation_time,
+            "initial_noise": to_np(x[0]),
+            "raw_noise": to_np(raw_noise[0]),
+        }
         return action, trajectories, x_chain, x1_estimation, info
 
     def x1_estimate(self, x_chain, conditions):
@@ -248,14 +253,14 @@ class FlowPolicy(nn.Module):
         # first obstacle
         xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
         ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xa = 2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_ya = 2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xa = 2.0 * (6.0 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_ya = 2.0 * (1.0 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
         # second obstacle
-        xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
+        xb = 2.0 * 0.2 / (obs_norm_max_1 - obs_norm_min_1)
         yb = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xb = 2.0 * (4.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_yb = 2.0 * (1.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xb = 2.0 * (8.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_yb = 2.0 * (2.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
         # apply constraints for each horizon step (except the first and last)
         for i in range(self.horizon - 2):
@@ -547,19 +552,19 @@ class FlowPolicy(nn.Module):
             xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
             ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
             off_xa = (
-                2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+                2.0 * (6.0 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
             )
             off_ya = (
-                2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+                2.0 * (1.0 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
             )
 
-            xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
+            xb = 2.0 * 0.2 / (obs_norm_max_1 - obs_norm_min_1)
             yb = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
             off_xb = (
-                2.0 * (4.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+                2.0 * (8.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
             )
             off_yb = (
-                2.0 * (1.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+                2.0 * (2.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
             )
 
             ellipse_margin = float(self.cfg.ellipse_margin)
@@ -770,6 +775,7 @@ class FlowPolicy(nn.Module):
             self.action_dim + self.state_dim,
             device=self.cfg.device,
         )
+        raw_noise = x.clone()
 
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
@@ -806,6 +812,9 @@ class FlowPolicy(nn.Module):
         best_dof_chain = torch.cat(
             [best_dof_chain_part_1, best_dof_chain_part_2], dim=-1
         )
+
+        self.last_initial_noise = to_np(x_chain[0][best_idx].squeeze(0))
+        self.last_raw_noise = to_np(raw_noise[best_idx].squeeze(0))
 
         best_s0_np = to_np(best_s0)
         best_sH_np = to_np(best_sH)
@@ -976,6 +985,8 @@ class FlowPolicy(nn.Module):
 
         info = {
             "computation_time": computation_time,
+            "initial_noise": getattr(self, "last_initial_noise", None),
+            "raw_noise": getattr(self, "last_raw_noise", None),
         }
         return action, trajectories, x_chain, x1_estimation, info
 
@@ -1167,6 +1178,8 @@ class FlowPolicy(nn.Module):
 
         info = {
             "computation_time": computation_time,
+            "initial_noise": getattr(self, "last_initial_noise", None),
+            "raw_noise": getattr(self, "last_raw_noise", None),
         }
         return action, trajectories, x_chain, x1_estimation, info
 
@@ -1309,6 +1322,8 @@ class FlowPolicy(nn.Module):
 
         info = {
             "computation_time": computation_time,
+            "initial_noise": getattr(self, "last_initial_noise", None),
+            "raw_noise": getattr(self, "last_raw_noise", None),
         }
         return action, trajectories, x_chain, x1_estimation, info
 
@@ -1466,6 +1481,8 @@ class FlowPolicy(nn.Module):
 
         info = {
             "computation_time": computation_time,
+            "initial_noise": getattr(self, "last_initial_noise", None),
+            "raw_noise": getattr(self, "last_raw_noise", None),
         }
         return action, trajectories, x_chain, x1_estimation, info
 
@@ -1499,6 +1516,7 @@ class FlowPolicy(nn.Module):
             self.action_dim + self.state_dim,
             device=self.cfg.device,
         )
+        raw_noise = x.clone()
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
         )
@@ -1546,7 +1564,11 @@ class FlowPolicy(nn.Module):
         t_end = time.time()
         computation_time = t_end - t_start
 
-        info = {"computation_time": computation_time}
+        info = {
+            "computation_time": computation_time,
+            "initial_noise": to_np(x[0]),
+            "raw_noise": to_np(raw_noise[0]),
+        }
         return action, trajectories, x_chain, x1_estimation, info
 
     def oc_flow_forward(
@@ -1735,6 +1757,8 @@ class FlowPolicy(nn.Module):
 
         info = {
             "computation_time": computation_time,
+            "initial_noise": getattr(self, "last_initial_noise", None),
+            "raw_noise": getattr(self, "last_raw_noise", None),
         }
         return action, trajectories, x_chain, x1_estimation, info
 

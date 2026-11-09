@@ -13,9 +13,9 @@ action_dim=2
 flow_type="cfm"
 horizon=384
 flow_cp=20
-ode_t_steps=11
+ode_t_steps=10
 
-random_repeat=20
+random_repeat=3
 controller="pd"
 
 # warmstart trajectory drawn from the nominal sampler

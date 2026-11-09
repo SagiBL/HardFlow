@@ -1,4 +1,10 @@
 import os
+import sys
+
+_repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 import csv
 
 import matplotlib
@@ -159,13 +165,13 @@ class ProxyValueModel(nn.Module):
 
         xa = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
         ya = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xa = 2.0 * (6.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_ya = 2.0 * (4.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xa = 2.0 * (6.0 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_ya = 2.0 * (1.0 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
-        xb = 2.0 * 0.8 / (obs_norm_max_1 - obs_norm_min_1)
+        xb = 2.0 * 0.2 / (obs_norm_max_1 - obs_norm_min_1)
         yb = 2.0 * 0.8 / (obs_norm_max_0 - obs_norm_min_0)
-        off_xb = 2.0 * (4.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
-        off_yb = 2.0 * (1.5 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
+        off_xb = 2.0 * (8.8 - obs_norm_min_1) / (obs_norm_max_1 - obs_norm_min_1) - 1.0
+        off_yb = 2.0 * (2.8 - obs_norm_min_0) / (obs_norm_max_0 - obs_norm_min_0) - 1.0
 
         constraint_values = []
 
@@ -312,10 +318,16 @@ def run_env(
     observation = env.reset()
 
     if cfg.fixed_start:
-        observation = np.array([0.94875744, 2.93648809, -0.01347715, 0.06358764])
+        observation = np.array([1.0, 7.9, 0.0, 0.0])
         env.set_state(observation[0:2], observation[2:4])
+        target = np.array([7.0, 9.0])
+        if hasattr(env, "set_target"):
+            env.set_target(target)
+        else:
+            env._target = target
+    else:
+        target = env._target
 
-    target = env._target
     conditions = {
         cfg.horizon - 1: np.array([*target, 0.0, 0]),
     }
@@ -336,6 +348,9 @@ def run_env(
 
     state_sequence = None
     action_sequence = None
+    initial_noise = None
+    policy_x_chain = None
+    policy_x1_estimation = None
 
     pbar = tqdm.tqdm(range(env.max_episode_steps), desc="Episode")
     for t in pbar:
@@ -356,6 +371,7 @@ def run_env(
 
             state_sequence = samples.observations[0]
             action_sequence = samples.actions[0]
+            initial_noise = info.get("initial_noise")
 
             # image of final sample
             renderer.composite(
@@ -364,38 +380,63 @@ def run_env(
                 ncol=1,
             )
 
-            #save all process waypoints
-            if(1):
-                # images of all diffusion timesteps from policy_x_chain
-                diff_save_dir = os.path.join(save_path, f"{run_id}_chain")
-                os.makedirs(diff_save_dir, exist_ok=True)
-                num_diffusion_steps = policy_x_chain.shape[1]
-                for step_idx in range(num_diffusion_steps):
-                    step_observations = policy_x_chain[
-                        0:1, step_idx, :, policy.action_dim :
-                    ]
-                    renderer.composite(
-                        os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
-                        step_observations,
-                        ncol=1,
-                    )
-                
-            #save all process waypoints (x1 estimation)
-            if(1):
-                # images of all diffusion timesteps from policy_x1_estimation
-                diff_save_dir = os.path.join(save_path, f"{run_id}_x1_estimation")
-                os.makedirs(diff_save_dir, exist_ok=True)
-                num_diffusion_steps = policy_x1_estimation.shape[1]
-                for step_idx in range(num_diffusion_steps):
-                    step_observations = policy_x1_estimation[
-                        0:1, step_idx, :, policy.action_dim :
-                    ]
-                    renderer.composite(
-                        os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
-                        step_observations,
-                        ncol=1,
-                    )
-            print(f"Mean distance of a point in step {step_idx} and in final step: {np.linalg.norm(step_observations - samples.observations[:1], axis=-1).mean()}")
+            # Folder inside saving folder for trajectory results
+            waypoints_dir = os.path.join(save_path, "waypoints")
+            os.makedirs(waypoints_dir, exist_ok=True)
+
+            # Symlink 'trajectories' to 'waypoints' for convenience
+            trajectories_symlink = os.path.join(save_path, "trajectories")
+            if not os.path.exists(trajectories_symlink) and not os.path.islink(trajectories_symlink):
+                try:
+                    os.symlink("waypoints", trajectories_symlink)
+                except OSError:
+                    pass
+
+            # 1. Planned waypoints (output of diffusion process, shape: (horizon, 4))
+            np.save(
+                os.path.join(waypoints_dir, f"{run_id}_waypoints.npy"),
+                state_sequence,
+            )
+
+            # 2. Initial noise (input to diffusion process, shape: (horizon, 6))
+            if initial_noise is not None:
+                np.save(
+                    os.path.join(waypoints_dir, f"{run_id}_initial_noise.npy"),
+                    initial_noise,
+                )
+
+            # save all process waypoints (chain and x1 estimation commented out)
+            # if(1):
+            #     # images of all diffusion timesteps from policy_x_chain
+            #     diff_save_dir = os.path.join(save_path, f"{run_id}_chain")
+            #     os.makedirs(diff_save_dir, exist_ok=True)
+            #     num_diffusion_steps = policy_x_chain.shape[1]
+            #     for step_idx in range(num_diffusion_steps):
+            #         step_observations = policy_x_chain[
+            #             0:1, step_idx, :, policy.action_dim :
+            #         ]
+            #         renderer.composite(
+            #             os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
+            #             step_observations,
+            #             ncol=1,
+            #         )
+            #     
+            # # save all process waypoints (x1 estimation)
+            # if(1):
+            #     # images of all diffusion timesteps from policy_x1_estimation
+            #     diff_save_dir = os.path.join(save_path, f"{run_id}_x1_estimation")
+            #     os.makedirs(diff_save_dir, exist_ok=True)
+            #     num_diffusion_steps = policy_x1_estimation.shape[1]
+            #     for step_idx in range(num_diffusion_steps):
+            #         step_observations = policy_x1_estimation[
+            #             0:1, step_idx, :, policy.action_dim :
+            #         ]
+            #         renderer.composite(
+            #             os.path.join(diff_save_dir, f"step_{step_idx:03d}.png"),
+            #             step_observations,
+            #             ncol=1,
+            #         )
+            # print(f"Mean distance of a point in step {step_idx} and in final step: {np.linalg.norm(step_observations - samples.observations[:1], axis=-1).mean()}")
     
 
         if cfg.controller == "pd":  # proportional-derivative
@@ -437,91 +478,98 @@ def run_env(
         # if np.linalg.norm(observation[0:2] - env._target) <= 0.5:
         #     break
 
-    real_save_path = os.path.join(save_path, f"{run_id}_real.png")
-    import matplotlib.pyplot as plt
-
-    background = env.maze_arr == 10
-    extent = (0, 1, 1, 0)
-    obs = np.array(rollout)
-    obs = obs + 0.7
-    iscale, jscale = 9, 12
-    obs[:, 0] /= iscale
-    obs[:, 1] /= jscale
-
-    plt.clf()
-    fig = plt.gcf()
-    fig.set_size_inches(5, 5)
-    fig.set_dpi(300)
-
-    plt.imshow(background * 0.5, extent=extent, cmap=plt.cm.binary, vmin=0, vmax=1)
-    ax = plt.gca()
-    ax.set_position([0, 0, 1, 1])
-    ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(0, 1)
-    ax.set_ylim(1, 0)
-
-    theta = np.linspace(0, 2 * np.pi, 200)
-    x1 = 0.8 / 12.0 * np.cos(theta) + 7.5 / 12.0
-    y1 = 0.8 / 9.0 * np.sin(theta) + 5.5 / 9.0
-    plt.fill(
-        x1,
-        y1,
-        facecolor="red",
-        edgecolor="none",
-        alpha=0.35,
-        zorder=5,
-        label="Obstacles",
-    )
-    x2 = (
-        0.8 / 12.0 * np.sqrt(np.abs(np.cos(theta))) * np.sign(np.cos(theta))
-        + 5.5 / 12.0
-    )
-    y2 = 0.8 / 9.0 * np.sqrt(np.abs(np.sin(theta))) * np.sign(np.sin(theta)) + 2.2 / 9.0
-    plt.fill(
-        x2,
-        y2,
-        facecolor="red",
-        edgecolor="none",
-        alpha=0.35,
-        zorder=5,
-        label="_nolegend_",
-    )
-
-    plt.plot(
-        obs[:, 1], obs[:, 0], c="blue", linewidth=0.9, zorder=12, label="Trajectory"
-    )
-
-    plt.scatter(
-        obs[0, 1],
-        obs[0, 0],
-        c="limegreen",
-        edgecolors="black",
-        linewidths=0.5,
-        s=50,
-        marker="o",
-        zorder=30,
-        label="Start",
-    )
-    plt.scatter(
-        obs[-1, 1],
-        obs[-1, 0],
-        c="orange",
-        edgecolors="black",
-        linewidths=0.6,
-        s=90,
-        marker="*",
-        zorder=30,
-        label="End",
-    )
-
-    plt.axis("off")
-    plt.legend(loc="best", fontsize=11, framealpha=0.9)
-    fig.savefig(real_save_path, dpi=300, bbox_inches="tight", pad_inches=0)
-    plt.close(fig)
+    # real_save_path = os.path.join(save_path, f"{run_id}_real.png")
+    # import matplotlib.pyplot as plt
+    # 
+    # background = env.maze_arr == 10
+    # extent = (0, 1, 1, 0)
+    # obs = np.array(rollout)
+    # obs = obs + 0.7
+    # iscale, jscale = 9, 12
+    # obs[:, 0] /= iscale
+    # obs[:, 1] /= jscale
+    # 
+    # plt.clf()
+    # fig = plt.gcf()
+    # fig.set_size_inches(5, 5)
+    # fig.set_dpi(300)
+    # 
+    # plt.imshow(background * 0.5, extent=extent, cmap=plt.cm.binary, vmin=0, vmax=1)
+    # ax = plt.gca()
+    # ax.set_position([0, 0, 1, 1])
+    # ax.set_aspect("equal", adjustable="box")
+    # ax.set_xlim(0, 1)
+    # ax.set_ylim(1, 0)
+    # 
+    # theta = np.linspace(0, 2 * np.pi, 200)
+    # x1 = 0.8 / 12.0 * np.cos(theta) + 6.7 / 12.0
+    # y1 = 0.8 / 9.0 * np.sin(theta) + 1.7 / 9.0
+    # plt.fill(
+    #     x1,
+    #     y1,
+    #     facecolor="red",
+    #     edgecolor="none",
+    #     alpha=0.35,
+    #     zorder=5,
+    #     label="Obstacles",
+    # )
+    # x2 = (
+    #     0.2 / 12.0 * np.sqrt(np.abs(np.cos(theta))) * np.sign(np.cos(theta))
+    #     + 9.5 / 12.0
+    # )
+    # y2 = 0.8 / 9.0 * np.sqrt(np.abs(np.sin(theta))) * np.sign(np.sin(theta)) + 3.5 / 9.0
+    # plt.fill(
+    #     x2,
+    #     y2,
+    #     facecolor="red",
+    #     edgecolor="none",
+    #     alpha=0.35,
+    #     zorder=5,
+    #     label="_nolegend_",
+    # )
+    # 
+    # plt.plot(
+    #     obs[:, 1], obs[:, 0], c="blue", linewidth=0.9, zorder=12, label="Trajectory"
+    # )
+    # 
+    # plt.scatter(
+    #     obs[0, 1],
+    #     obs[0, 0],
+    #     c="limegreen",
+    #     edgecolors="black",
+    #     linewidths=0.5,
+    #     s=50,
+    #     marker="o",
+    #     zorder=30,
+    #     label="Start",
+    # )
+    # plt.scatter(
+    #     obs[-1, 1],
+    #     obs[-1, 0],
+    #     c="orange",
+    #     edgecolors="black",
+    #     linewidths=0.6,
+    #     s=90,
+    #     marker="*",
+    #     zorder=30,
+    #     label="End",
+    # )
+    # 
+    # plt.axis("off")
+    # plt.legend(loc="best", fontsize=11, framealpha=0.9)
+    # fig.savefig(real_save_path, dpi=300, bbox_inches="tight", pad_inches=0)
+    # plt.close(fig)
 
     avg_computation_time = np.mean(computation_times) if computation_times else None
 
-    return score, total_violations, np.array(rollout), avg_computation_time
+    return (
+        score,
+        total_violations,
+        np.array(rollout),
+        avg_computation_time,
+        state_sequence,
+        initial_noise,
+    )
 
 
 def check_violation(observation, constraint):
@@ -529,8 +577,8 @@ def check_violation(observation, constraint):
     if constraint == "ellipses" or constraint == "ellipses_and_dynamics":
         y, x = observation[0], observation[1]
 
-        center1_x = 6.8
-        center1_y = 4.8
+        center1_x = 6.0
+        center1_y = 1.0
         radius1_x = 0.8
         radius1_y = 0.8
 
@@ -540,9 +588,9 @@ def check_violation(observation, constraint):
         if ellipse1_check < 1.0:
             return 1.0
 
-        center2_x = 4.8
-        center2_y = 1.5
-        radius2_x = 0.8
+        center2_x = 8.8
+        center2_y = 2.8
+        radius2_x = 0.2
         radius2_y = 0.8
 
         ellipse2_check = ((x - center2_x) / radius2_x) ** 4 + (
@@ -700,11 +748,17 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
 
     # run env
     trajectory_data = []
-    real_trajectories_ls = []
+    planned_trajectories_ls = []
+    initial_noise_ls = []
     for run_id in range(cfg.random_repeat):
-        score, total_violations, real_trajectory, avg_computation_time = run_env(
-            dataset.env, flow_policy, cfg, run_id=run_id
-        )
+        (
+            score,
+            total_violations,
+            real_trajectory,
+            avg_computation_time,
+            planned_trajectory,
+            initial_noise,
+        ) = run_env(dataset.env, flow_policy, cfg, run_id=run_id)
 
         steps = len(real_trajectory) - 1
         safety = total_violations == 0
@@ -724,10 +778,24 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
             }
         )
 
-        real_trajectories_ls.append(real_trajectory)
+        planned_trajectories_ls.append(planned_trajectory)
+        if initial_noise is not None:
+            initial_noise_ls.append(initial_noise)
 
-    if real_trajectories_ls:
-        ...
+    eval_waypoints_dir = os.path.join(
+        cfg.log_folder, cfg.env, "eval", cfg.exp_name, "waypoints"
+    )
+    os.makedirs(eval_waypoints_dir, exist_ok=True)
+    if planned_trajectories_ls:
+        np.save(
+            os.path.join(eval_waypoints_dir, "all_planned_waypoints.npy"),
+            np.array(planned_trajectories_ls),
+        )
+    if initial_noise_ls:
+        np.save(
+            os.path.join(eval_waypoints_dir, "all_initial_noise.npy"),
+            np.array(initial_noise_ls),
+        )
 
     csv_path = os.path.join(
         cfg.log_folder, cfg.env, "eval", cfg.exp_name, "trajectories.csv"
