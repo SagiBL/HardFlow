@@ -63,7 +63,8 @@ python run/eval.py \
 	--controller "$controller" \
 	--no-render \
 	--fixed_start \
-	--guidance_method hardflow
+	--guidance_method hardflow \
+	"$@"
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

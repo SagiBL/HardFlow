@@ -88,3 +88,5 @@ class FlowMatchingEvaluationConfig:
 
     oc_flow_lr: float = 0.1
     oc_flow_steps: int = 20
+
+    selected_run_ids: str = ""

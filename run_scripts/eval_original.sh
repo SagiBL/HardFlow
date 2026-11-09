@@ -11,9 +11,9 @@ action_dim=2
 flow_type="cfm"
 horizon=384
 flow_cp=20
-ode_t_steps=10
+ode_t_steps=20
 
-random_repeat=200
+random_repeat=1000
 controller="pd"
 
 constraint="ellipses"
@@ -39,7 +39,8 @@ python run/eval.py \
 	--controller "$controller" \
 	--no-render \
 	--fixed_start \
-	--guidance_method original
+	--guidance_method original \
+	"$@"
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

@@ -61,7 +61,8 @@ python run/eval.py \
 	--controller "$controller" \
 	--no-render \
 	--fixed_start \
-	--guidance_method oc_flow
+	--guidance_method oc_flow \
+	"$@"
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

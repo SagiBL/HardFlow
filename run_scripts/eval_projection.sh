@@ -67,12 +67,13 @@ run_one () {
         --projection_gradient_steps "$g_steps" \
         --no-render \
         --fixed_start \
-        --guidance_method projection
+        --guidance_method projection \
+        "${@:3}"
 }
 
 #run_one "all"  0   # Projection-All
 #run_one "late" 0   # Projection-Late
-run_one "all"  5   # Projection-All  + Gradient Guidance
+run_one "all"  5 "$@"   # Projection-All  + Gradient Guidance
 #run_one "late" 5   # Projection-Late + Gradient Guidance
 
 end_time=$(date +%s)

@@ -308,12 +308,11 @@ def run_env(
     policy,
     cfg: FlowMatchingEvaluationConfig,
     run_id=0,
+    skip_execution=False,
 ):
     assert (
         env.name == "maze2d-large-v1"
     ), "This script is designed to run maze2d-large-v1."
-
-    renderer = hardflow.utils.Maze2dRenderer("maze2d-large-v1", env)
 
     observation = env.reset()
 
@@ -330,7 +329,17 @@ def run_env(
 
     conditions = {
         cfg.horizon - 1: np.array([*target, 0.0, 0]),
+        0: observation,
     }
+
+    if skip_execution:
+        # Call policy with skip_execution=True:
+        # Executes torch.randn to maintain exact RNG sync across runs,
+        # but skips heavy functions (ODE solver, IPOPT, rollout simulation, rendering).
+        policy(conditions, batch_size=cfg.batch_size, skip_execution=True)
+        return None, None, None, None, None, None
+
+    renderer = hardflow.utils.Maze2dRenderer("maze2d-large-v1", env)
 
     rollout = [observation.copy()]
     computation_times = []
@@ -605,6 +614,29 @@ def check_violation(observation, constraint):
         raise NotImplementedError(f"Constraint {constraint} is not implemented.")
 
 
+def parse_selected_ids(id_str: str):
+    """
+    Parse a string of sample IDs (e.g. '10,11,12,13', '10-13', '58, 75, 78').
+    Returns a set of integers, or None if empty.
+    """
+    if not id_str or not id_str.strip():
+        return None
+    selected = set()
+    for part in id_str.replace(" ", ",").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            start, end = part.split("-", 1)
+            selected.update(range(int(start), int(end) + 1))
+        elif ".." in part:
+            start, end = part.split("..", 1)
+            selected.update(range(int(start), int(end) + 1))
+        else:
+            selected.add(int(part))
+    return selected
+
+
 def evaluate(cfg: FlowMatchingEvaluationConfig):
 
     # get dataset (only for its normalizer)
@@ -747,10 +779,27 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
         )
 
     # run env
+    selected_ids = parse_selected_ids(cfg.selected_run_ids)
+    num_repeats = cfg.random_repeat
+    if selected_ids is not None:
+        max_selected = max(selected_ids)
+        if max_selected >= num_repeats:
+            num_repeats = max_selected + 1
+        print(f"[*] Filter active: running ONLY selected sample IDs: {sorted(selected_ids)}")
+        print(f"[*] Total repeat range: 0..{num_repeats - 1}")
+        print(f"[*] Unselected samples will execute torch.randn (preserving exact RNG sync) with solver functions disabled.")
+
     trajectory_data = []
     planned_trajectories_ls = []
     initial_noise_ls = []
-    for run_id in range(cfg.random_repeat):
+    executed_run_ids = []
+
+    for run_id in range(num_repeats):
+        skip = (selected_ids is not None and run_id not in selected_ids)
+        if skip:
+            run_env(dataset.env, flow_policy, cfg, run_id=run_id, skip_execution=True)
+            continue
+
         (
             score,
             total_violations,
@@ -758,7 +807,7 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
             avg_computation_time,
             planned_trajectory,
             initial_noise,
-        ) = run_env(dataset.env, flow_policy, cfg, run_id=run_id)
+        ) = run_env(dataset.env, flow_policy, cfg, run_id=run_id, skip_execution=False)
 
         steps = len(real_trajectory) - 1
         safety = total_violations == 0
@@ -781,25 +830,59 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
         planned_trajectories_ls.append(planned_trajectory)
         if initial_noise is not None:
             initial_noise_ls.append(initial_noise)
+        executed_run_ids.append(run_id)
 
     eval_waypoints_dir = os.path.join(
         cfg.log_folder, cfg.env, "eval", cfg.exp_name, "waypoints"
     )
     os.makedirs(eval_waypoints_dir, exist_ok=True)
+
+    all_wp_path = os.path.join(eval_waypoints_dir, "all_planned_waypoints.npy")
     if planned_trajectories_ls:
-        np.save(
-            os.path.join(eval_waypoints_dir, "all_planned_waypoints.npy"),
-            np.array(planned_trajectories_ls),
-        )
+        if selected_ids is not None and os.path.isfile(all_wp_path):
+            try:
+                existing_wp = np.load(all_wp_path)
+                for rid, traj in zip(executed_run_ids, planned_trajectories_ls):
+                    if rid < len(existing_wp):
+                        existing_wp[rid] = traj
+                np.save(all_wp_path, existing_wp)
+            except Exception:
+                np.save(all_wp_path, np.array(planned_trajectories_ls))
+        else:
+            np.save(all_wp_path, np.array(planned_trajectories_ls))
+
+    all_noise_path = os.path.join(eval_waypoints_dir, "all_initial_noise.npy")
     if initial_noise_ls:
-        np.save(
-            os.path.join(eval_waypoints_dir, "all_initial_noise.npy"),
-            np.array(initial_noise_ls),
-        )
+        if selected_ids is not None and os.path.isfile(all_noise_path):
+            try:
+                existing_noise = np.load(all_noise_path)
+                for rid, noise in zip(executed_run_ids, initial_noise_ls):
+                    if rid < len(existing_noise):
+                        existing_noise[rid] = noise
+                np.save(all_noise_path, existing_noise)
+            except Exception:
+                np.save(all_noise_path, np.array(initial_noise_ls))
+        else:
+            np.save(all_noise_path, np.array(initial_noise_ls))
 
     csv_path = os.path.join(
         cfg.log_folder, cfg.env, "eval", cfg.exp_name, "trajectories.csv"
     )
+    existing_records = {}
+    if selected_ids is not None and os.path.isfile(csv_path):
+        try:
+            with open(csv_path, "r", newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    existing_records[int(row["run_id"])] = row
+        except Exception:
+            pass
+
+    for data in trajectory_data:
+        existing_records[data["run_id"]] = data
+
+    sorted_records = [existing_records[rid] for rid in sorted(existing_records.keys())]
+
     with open(csv_path, "w", newline="") as csvfile:
         fieldnames = [
             "run_id",
@@ -811,7 +894,7 @@ def evaluate(cfg: FlowMatchingEvaluationConfig):
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        for data in trajectory_data:
+        for data in sorted_records:
             writer.writerow(data)
 
 

@@ -123,22 +123,22 @@ class FlowPolicy(nn.Module):
         self.obs_norm_mins = self.normalizer.normalizers["observations"].mins
         self.obs_norm_maxs = self.normalizer.normalizers["observations"].maxs
 
-    def __call__(self, conditions, batch_size=1, verbose=True):
+    def __call__(self, conditions, batch_size=1, verbose=True, skip_execution=False):
 
         if self.cfg.guidance_method in ["original"]:
             pass
         elif self.cfg.guidance_method in ["gradient_guidance"]:
-            return self.gradient_guidance_forward(conditions, batch_size)
+            return self.gradient_guidance_forward(conditions, batch_size, skip_execution=skip_execution)
         elif self.cfg.guidance_method in ["projection"]:
-            return self.projection_forward(conditions, batch_size)
+            return self.projection_forward(conditions, batch_size, skip_execution=skip_execution)
         elif self.cfg.guidance_method in ["projection_relaxed"]:
-            return self.projection_relaxed_forward(conditions, batch_size)
+            return self.projection_relaxed_forward(conditions, batch_size, skip_execution=skip_execution)
         elif self.cfg.guidance_method in ["hardflow"]:
-            return self.hardflow_forward(conditions, batch_size)
+            return self.hardflow_forward(conditions, batch_size, skip_execution=skip_execution)
         elif self.cfg.guidance_method in ["hardflow_new"]:
-            return self.hardflow_new_forward(conditions, batch_size)
+            return self.hardflow_new_forward(conditions, batch_size, skip_execution=skip_execution)
         elif self.cfg.guidance_method in ["oc_flow"]:
-            return self.oc_flow_forward(conditions, batch_size)
+            return self.oc_flow_forward(conditions, batch_size, skip_execution=skip_execution)
         else:
             raise ValueError(f"Unsupported guidance method: {self.cfg.guidance_method}")
 
@@ -169,6 +169,14 @@ class FlowPolicy(nn.Module):
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
         )
+
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": to_np(x[0]),
+                "raw_noise": to_np(raw_noise[0]),
+            }
+            return None, None, None, None, info
 
         x, x_chain = solver(
             x,
@@ -767,7 +775,7 @@ class FlowPolicy(nn.Module):
         }
         self.oc_cs_opti.solver("ipopt", solver_opts)
 
-    def warmstart(self, conditions):
+    def warmstart(self, conditions, skip_execution=False):
 
         x = torch.randn(
             self.cfg.warmstart_batch,
@@ -780,6 +788,12 @@ class FlowPolicy(nn.Module):
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
         )
+        self.last_initial_noise = to_np(x[0])
+        self.last_raw_noise = to_np(raw_noise[0])
+
+        if skip_execution:
+            return None, None, None
+
         x_chain = [x.clone()]
         dt = 1.0 / self.oc_N_steps
         for k in range(self.oc_N_steps):
@@ -822,7 +836,7 @@ class FlowPolicy(nn.Module):
 
         return best_s0_np, best_sH_np, best_dof_chain_np
 
-    def projection_forward(self, conditions, batch_size=1):
+    def projection_forward(self, conditions, batch_size=1, skip_execution=False):
         assert batch_size == 1, "batch_size must be 1 for optimal control"
         assert (
             self.cfg.guidance_method == "projection"
@@ -832,7 +846,14 @@ class FlowPolicy(nn.Module):
             self.normalizer.normalize, conditions, "observations"
         )
 
-        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions)
+        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions, skip_execution=skip_execution)
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": getattr(self, "last_initial_noise", None),
+                "raw_noise": getattr(self, "last_raw_noise", None),
+            }
+            return None, None, None, None, info
         best_final_dof = best_dof_chain_np[-1, :]
 
         t_start = time.time()
@@ -990,7 +1011,7 @@ class FlowPolicy(nn.Module):
         }
         return action, trajectories, x_chain, x1_estimation, info
 
-    def projection_relaxed_forward(self, conditions, batch_size=1):
+    def projection_relaxed_forward(self, conditions, batch_size=1, skip_execution=False):
         assert batch_size == 1, "batch_size must be 1 for optimal control"
         assert (
             self.cfg.guidance_method == "projection_relaxed"
@@ -1000,7 +1021,14 @@ class FlowPolicy(nn.Module):
             self.normalizer.normalize, conditions, "observations"
         )
 
-        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions)
+        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions, skip_execution=skip_execution)
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": getattr(self, "last_initial_noise", None),
+                "raw_noise": getattr(self, "last_raw_noise", None),
+            }
+            return None, None, None, None, info
         best_final_dof = best_dof_chain_np[-1, :]
 
         t_start = time.time()
@@ -1183,7 +1211,7 @@ class FlowPolicy(nn.Module):
         }
         return action, trajectories, x_chain, x1_estimation, info
 
-    def hardflow_forward(self, conditions, batch_size=1):
+    def hardflow_forward(self, conditions, batch_size=1, skip_execution=False):
         assert batch_size == 1, "batch_size must be 1 for optimal control"
         assert (
             self.cfg.guidance_method == "hardflow"
@@ -1193,7 +1221,14 @@ class FlowPolicy(nn.Module):
             self.normalizer.normalize, conditions, "observations"
         )
 
-        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions)
+        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions, skip_execution=skip_execution)
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": getattr(self, "last_initial_noise", None),
+                "raw_noise": getattr(self, "last_raw_noise", None),
+            }
+            return None, None, None, None, info
         best_final_dof = best_dof_chain_np[-1, :]
 
         t_start = time.time()
@@ -1327,7 +1362,7 @@ class FlowPolicy(nn.Module):
         }
         return action, trajectories, x_chain, x1_estimation, info
 
-    def hardflow_new_forward(self, conditions, batch_size=1):
+    def hardflow_new_forward(self, conditions, batch_size=1, skip_execution=False):
         """
         Variant of hardflow_forward that evaluates the reference flow with
         PyTorch directly instead of going through the l4casadi bridge. The
@@ -1344,7 +1379,14 @@ class FlowPolicy(nn.Module):
             self.normalizer.normalize, conditions, "observations"
         )
 
-        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions)
+        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions, skip_execution=skip_execution)
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": getattr(self, "last_initial_noise", None),
+                "raw_noise": getattr(self, "last_raw_noise", None),
+            }
+            return None, None, None, None, info
 
         t_start = time.time()
 
@@ -1486,7 +1528,7 @@ class FlowPolicy(nn.Module):
         }
         return action, trajectories, x_chain, x1_estimation, info
 
-    def gradient_guidance_forward(self, conditions, batch_size=1):
+    def gradient_guidance_forward(self, conditions, batch_size=1, skip_execution=False):
         """
         Use gradient guidance to generate actions.
         """
@@ -1520,6 +1562,13 @@ class FlowPolicy(nn.Module):
         x = apply_conditioning(
             x, to_torch(conditions, device=x.device), self.action_dim
         )
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": to_np(x[0]),
+                "raw_noise": to_np(raw_noise[0]),
+            }
+            return None, None, None, None, info
 
         x, x_chain = solver(
             x,
@@ -1575,6 +1624,7 @@ class FlowPolicy(nn.Module):
         self,
         conditions,
         batch_size=1,
+        skip_execution=False,
     ):
         assert batch_size == 1, "batch_size must be 1 for optimal control"
         assert (
@@ -1592,7 +1642,14 @@ class FlowPolicy(nn.Module):
             self.horizon * (self.state_dim + self.action_dim) - 2 * self.state_dim
         )
 
-        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions)
+        best_s0_np, best_sH_np, best_dof_chain_np = self.warmstart(conditions, skip_execution=skip_execution)
+        if skip_execution:
+            info = {
+                "computation_time": 0.0,
+                "initial_noise": getattr(self, "last_initial_noise", None),
+                "raw_noise": getattr(self, "last_raw_noise", None),
+            }
+            return None, None, None, None, info
 
         t_start = time.time()
 

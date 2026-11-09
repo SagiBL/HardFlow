@@ -15,7 +15,7 @@ horizon=384
 flow_cp=20
 ode_t_steps=10
 
-random_repeat=20
+random_repeat=4
 controller="pd"
 batch_size=1
 
@@ -51,7 +51,8 @@ python run/eval.py \
 	--controller "$controller" \
 	--no-render \
 	--fixed_start \
-	--guidance_method gradient_guidance
+	--guidance_method gradient_guidance \
+	"$@"
 
 end_time=$(date +%s)
 elapsed=$((end_time - start_time))

@@ -62,10 +62,11 @@ run_one () {
         --projection_gradient_steps "$g_steps" \
         --no-render \
         --fixed_start \
-        --guidance_method projection_relaxed
+        --guidance_method projection_relaxed \
+        "$@"
 }
 
-run_one 0   # Projection-Relaxed
+run_one 0 "$@"   # Projection-Relaxed
 ##run_one 5   # Projection-Relaxed + Gradient Guidance
 
 end_time=$(date +%s)
